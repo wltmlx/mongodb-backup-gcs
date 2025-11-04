@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mongodb-backup-gcs
+description: MongoDB backup solution using Google Cloud Storage
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - mongodb
+  - backup
+  - gcs
+  - google-cloud-storage
+home: https://github.com/wltmlx/mongodb-backup-gcs
+sources:
+  - https://github.com/wltmlx/mongodb-backup-gcs
+maintainers:
+  - name: wltmlx

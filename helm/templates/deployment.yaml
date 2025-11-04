@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mongodb-backup-gcs.fullname" . }}
+  labels:
+    {{- include "mongodb-backup-gcs.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mongodb-backup-gcs.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mongodb-backup-gcs.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      restartPolicy: {{ .Values.restartPolicy }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: MONGODB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: mongodb-host
+        - name: MONGODB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: mongodb-port
+        {{- if .Values.mongodb.user }}
+        - name: MONGODB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: mongodb-user
+        {{- end }}
+        {{- if .Values.mongodb.password }}
+        - name: MONGODB_PASS
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.existingSecret }}
+              name: {{ .Values.existingSecret }}
+              key: mongodb-password
+              {{- else }}
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: mongodb-password
+              {{- end }}
+        {{- end }}
+        {{- if .Values.mongodb.db }}
+        - name: MONGODB_DB
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: mongodb-db
+        {{- end }}
+        - name: GCS_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: gcs-bucket
+        - name: GCS_KEY_FILE_PATH
+          value: {{ .Values.gcs.keyFilePath | quote }}
+        - name: BACKUP_FOLDER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: backup-folder
+        - name: CRON_TIME
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: cron-time
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: timezone
+        - name: CRON_TZ
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mongodb-backup-gcs.fullname" . }}
+              key: timezone
+        {{- if .Values.initBackup }}
+        - name: INIT_BACKUP
+          value: "true"
+        {{- end }}
+        {{- if .Values.initRestore }}
+        - name: INIT_RESTORE
+          value: "true"
+        {{- end }}
+        {{- if .Values.disableCron }}
+        - name: DISABLE_CRON
+          value: "true"
+        {{- end }}
+        {{- if .Values.extraOpts }}
+        - name: EXTRA_OPTS
+          value: {{ .Values.extraOpts | quote }}
+        {{- end }}
+        volumeMounts:
+        - name: gcs-key
+          mountPath: /secrets
+          readOnly: true
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - name: gcs-key
+        secret:
+          {{- if .Values.existingSecret }}
+          secretName: {{ .Values.existingSecret }}
+          {{- else }}
+          secretName: {{ include "mongodb-backup-gcs.fullname" . }}
+          {{- end }}
+          items:
+          - key: gcs-key.json
+            path: gcs-key.json
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

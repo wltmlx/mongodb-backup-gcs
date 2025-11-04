@@ -1,117 +1,258 @@
-# mongodb-backup-s3
+# MongoDB Backup to Google Cloud Storage
 
-This image runs mongodump to backup data using cronjob to an s3 bucket
+Automated MongoDB backups to Google Cloud Storage (GCS) using Docker or Kubernetes.
 
-## Usage:
+**Image:** `wltmlx/mongodb-backup-gcs:latest`
 
+## Features
+
+- Automated MongoDB backups using cron jobs
+- Google Cloud Storage (GCS) integration
+- Docker and Kubernetes/Helm support
+- Backup/restore/list operations
+- Support for private registries (Artifactory)
+- Flexible MongoDB and GCS configuration
+
+## Prerequisites
+
+### GCS Setup
+
+1. Create a GCS bucket:
+```bash
+gsutil mb gs://my-backup-bucket
 ```
+
+2. Create a GCS service account:
+```bash
+gcloud iam service-accounts create mongodb-backup \
+  --display-name="MongoDB Backup Service Account"
+```
+
+3. Grant necessary permissions:
+```bash
+PROJECT_ID=$(gcloud config get-value project)
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member=serviceAccount:mongodb-backup@$PROJECT_ID.iam.gserviceaccount.com \
+  --role=roles/storage.objectCreator
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member=serviceAccount:mongodb-backup@$PROJECT_ID.iam.gserviceaccount.com \
+  --role=roles/storage.objectViewer
+```
+
+4. Create and download the service account key:
+```bash
+gcloud iam service-accounts keys create gcs-key.json \
+  --iam-account=mongodb-backup@$PROJECT_ID.iam.gserviceaccount.com
+```
+
+## Docker Deployment
+
+### Basic Usage
+
+```bash
 docker run -d \
-  --env AWS_ACCESS_KEY_ID=awsaccesskeyid \
-  --env AWS_SECRET_ACCESS_KEY=awssecretaccesskey \
-  --env BUCKET=s3bucket
+  --env GCS_BUCKET=my-gcs-bucket \
+  --env GCS_KEY_FILE_PATH=/secrets/gcs-key.json \
+  -v /path/to/gcs-key.json:/secrets/gcs-key.json \
   --env MONGODB_HOST=mongodb.host \
   --env MONGODB_PORT=27017 \
   --env MONGODB_USER=admin \
   --env MONGODB_PASS=password \
-  halvves/mongodb-backup-s3
+  wltmlx/mongodb-backup-gcs:latest
 ```
 
-If you link `halvves/mongodb-backup-s3` to a mongodb container with an alias named mongodb, this image will try to auto load the `host`, `port`, `user`, `pass` if possible. Like this:
+### Docker Compose
 
-```
-docker run -d \
-  --env AWS_ACCESS_KEY_ID=myaccesskeyid \
-  --env AWS_SECRET_ACCESS_KEY=mysecretaccesskey \
-  --env BUCKET=mybucketname \
-  --env BACKUP_FOLDER=a/sub/folder/path/ \
-  --env INIT_BACKUP=true \
-  --link my_mongo_db:mongodb \
-  halvves/mongodb-backup-s3
-```
-
-Add to a docker-compose.yml to enhance your robotic army:
-
-For automated backups
-```
+**For automated backups:**
+```yaml
 mongodbbackup:
-  image: 'halvves/mongodb-backup-s3:latest'
+  image: 'wltmlx/mongodb-backup-gcs:latest'
   links:
     - mongodb
   environment:
-    - AWS_ACCESS_KEY_ID=myaccesskeyid
-    - AWS_SECRET_ACCESS_KEY=mysecretaccesskey
-    - BUCKET=my-s3-bucket
+    - GCS_BUCKET=my-gcs-bucket
+    - GCS_KEY_FILE_PATH=/secrets/gcs-key.json
     - BACKUP_FOLDER=prod/db/
+  volumes:
+    - /path/to/gcs-key.json:/secrets/gcs-key.json
   restart: always
 ```
 
-Or use `INIT_RESTORE` with `DISABLE_CRON` for seeding/restoring/starting a db (great for a fresh instance or a dev machine)
-```
+**For restore operations:**
+```yaml
 mongodbbackup:
-  image: 'halvves/mongodb-backup-s3:latest'
+  image: 'wltmlx/mongodb-backup-gcs:latest'
   links:
     - mongodb
   environment:
-    - AWS_ACCESS_KEY_ID=myaccesskeyid
-    - AWS_SECRET_ACCESS_KEY=mysecretaccesskey
-    - BUCKET=my-s3-bucket
+    - GCS_BUCKET=my-gcs-bucket
+    - GCS_KEY_FILE_PATH=/secrets/gcs-key.json
     - BACKUP_FOLDER=prod/db/
     - INIT_RESTORE=true
     - DISABLE_CRON=true
+  volumes:
+    - /path/to/gcs-key.json:/secrets/gcs-key.json
 ```
 
-## Parameters
+## Kubernetes / Helm Deployment
 
-`AWS_ACCESS_KEY_ID` - your aws access key id (for your s3 bucket)
+For Kubernetes deployments, use the Helm chart. See [helm/README.md](helm/README.md) for detailed Helm instructions.
 
-`AWS_SECRET_ACCESS_KEY`: - your aws secret access key (for your s3 bucket)
-
-`BUCKET`: - your s3 bucket
-
-`BACKUP_FOLDER`: - name of folder or path to put backups (eg `myapp/db_backups/`). defaults to root of bucket.
-
-`MONGODB_HOST` - the host/ip of your mongodb database
-
-`MONGODB_PORT` - the port number of your mongodb database
-
-`MONGODB_USER` - the username of your mongodb database. If MONGODB_USER is empty while MONGODB_PASS is not, the image will use admin as the default username
-
-`MONGODB_PASS` - the password of your mongodb database
-
-`MONGODB_DB` - the database name to dump. If not specified, it will dump all the databases
-
-`EXTRA_OPTS` - any extra options to pass to mongodump command
-
-`CRON_TIME` - the interval of cron job to run mongodump. `0 3 * * *` by default, which is every day at 03:00hrs.
-
-`TZ` - timezone. default: `US/Eastern`
-
-`CRON_TZ` - cron timezone. default: `US/Eastern`
-
-`INIT_BACKUP` - if set, create a backup when the container launched
-
-`INIT_RESTORE` - if set, restore from latest when container is launched
-
-`DISABLE_CRON` - if set, it will skip setting up automated backups. good for when you want to use this container to seed a dev environment.
-
-## Restore from a backup
-
-To see the list of backups, you can run:
-```
-docker exec mongodb-backup-s3 /listbackups.sh
+Quick start:
+```bash
+helm install mongodb-backup ./helm \
+  --set mongodb.host=mongodb \
+  --set gcs.bucket=my-backup-bucket \
+  --set existingSecret=gcs-credentials
 ```
 
-To restore database from a certain backup, simply run (pass in just the timestamp part of the filename):
+## Operations
 
-```
-docker exec mongodb-backup-s3 /restore.sh 20170406T155812
+### Docker: List Backups
+
+```bash
+docker exec mongodb-backup-gcs /listbackups.sh
 ```
 
-To restore latest just:
+### Docker: Restore Latest Backup
+
+```bash
+docker exec mongodb-backup-gcs /restore.sh
 ```
-docker exec mongodb-backup-s3 /restore.sh
+
+### Docker: Restore Specific Backup
+
+```bash
+docker exec mongodb-backup-gcs /restore.sh 20231115T030000
 ```
+
+### Kubernetes: Configure Automated Backups
+
+Create a `values.yaml` for Helm:
+
+```yaml
+mongodb:
+  host: "mongodb.default.svc.cluster.local"
+  port: 27017
+  user: "admin"
+  password: "secretpass"
+  db: ""
+
+gcs:
+  bucket: "my-backup-bucket"
+
+backupFolder: "mongodb-backups/"
+cronTime: "0 3 * * *"  # Daily at 3 AM UTC
+timezone: "UTC"
+
+existingSecret: "gcs-credentials"
+```
+
+Install with Helm:
+```bash
+helm install mongodb-backup ./helm -f values.yaml
+```
+
+### Kubernetes: One-Time Restore from Latest Backup
+
+Create a `values-restore.yaml`:
+
+```yaml
+mongodb:
+  host: "mongodb.default.svc.cluster.local"
+  port: 27017
+  user: "admin"
+  password: "secretpass"
+
+gcs:
+  bucket: "my-backup-bucket"
+
+initRestore: true      # Restore latest backup on startup
+disableCron: true      # Don't run scheduled backups after restore
+
+existingSecret: "gcs-credentials"
+```
+
+Deploy with:
+```bash
+helm install mongodb-restore ./helm -f values-restore.yaml
+```
+
+### Kubernetes: Manual Operations in Running Pod
+
+For manual operations in an already-running pod:
+
+List backups:
+```bash
+kubectl exec -it deployment/mongodb-backup -- /listbackups.sh
+```
+
+Restore specific backup:
+```bash
+kubectl exec -it deployment/mongodb-backup -- /restore.sh 20231115T030000
+```
+
+## Configuration
+
+### GCS Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GCS_BUCKET` | - | GCS bucket name (required) |
+| `GCS_KEY_FILE_PATH` | `/secrets/gcs-key.json` | Path to GCS service account key file |
+| `BACKUP_FOLDER` | root | Folder path in GCS bucket (e.g., `mongodb-backups/`) |
+
+### MongoDB Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MONGODB_HOST` | - | MongoDB hostname or IP |
+| `MONGODB_PORT` | 27017 | MongoDB port |
+| `MONGODB_USER` | - | MongoDB username (auto-set to 'admin' if password is set) |
+| `MONGODB_PASS` | - | MongoDB password |
+| `MONGODB_DB` | - | Specific database to backup (empty = all databases) |
+| `EXTRA_OPTS` | - | Extra options for mongodump/mongorestore |
+
+### Scheduling Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CRON_TIME` | `0 3 * * *` | Cron schedule (daily at 3 AM UTC) |
+| `TZ` | `UTC` | Timezone |
+| `CRON_TZ` | `UTC` | Cron job timezone |
+
+### Behavior Flags
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INIT_BACKUP` | - | Create backup on startup |
+| `INIT_RESTORE` | - | Restore latest backup on startup |
+| `DISABLE_CRON` | - | Disable scheduled backups (use for one-time restore) |
+
+## Troubleshooting
+
+### GCS Authentication Error
+- Ensure service account key is properly mounted
+- Verify service account has Storage Object Creator and Storage Object Viewer roles
+- Check `GCS_KEY_FILE_PATH` matches the mounted volume path
+
+### MongoDB Connection Error
+- Verify MongoDB hostname and port
+- Check MongoDB credentials
+- Ensure MongoDB is accessible from the container
+
+### Missing or Failed Backups
+- Check container/pod logs: `docker logs` or `kubectl logs`
+- Verify cron is enabled: `DISABLE_CRON` should not be set
+- Check GCS bucket has available quota
+- Verify disk space on MongoDB host
+
+## License
+
+Apache License 2.0
 
 ## Acknowledgements
 
-  * forked from [futurist](https://github.com/futurist)'s fork of [tutumcloud/mongodb-backup](https://github.com/tutumcloud/mongodb-backup)
+Forked from [halvves](https://github.com/halvves)'s fork of [tutumcloud/mongodb-backup](https://github.com/tutumcloud/mongodb-backup)

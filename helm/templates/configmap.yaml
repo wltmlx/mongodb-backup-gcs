@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mongodb-backup-gcs.fullname" . }}
+  labels:
+    {{- include "mongodb-backup-gcs.labels" . | nindent 4 }}
+data:
+  mongodb-host: {{ .Values.mongodb.host | quote }}
+  mongodb-port: {{ .Values.mongodb.port | quote }}
+  {{- if .Values.mongodb.user }}
+  mongodb-user: {{ .Values.mongodb.user | quote }}
+  {{- end }}
+  {{- if .Values.mongodb.db }}
+  mongodb-db: {{ .Values.mongodb.db | quote }}
+  {{- end }}
+  gcs-bucket: {{ .Values.gcs.bucket | quote }}
+  backup-folder: {{ .Values.backupFolder | quote }}
+  cron-time: {{ .Values.cronTime | quote }}
+  timezone: {{ .Values.timezone | quote }}

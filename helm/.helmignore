@@ -1,0 +1,38 @@
+# Patterns to ignore when building packages.
+# This supports shell glob patterns, relative paths, and negated (whitelist) patterns.
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Editor Files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Git Files
+.git
+.gitignore
+.gitattributes
+
+# Testing
+.tox
+
+# IDE
+*.sublime-workspace
+*.sublime-project
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+.pytest_cache/
+
+# Build outputs
+build/
+dist/
+
+# Examples
+examples/

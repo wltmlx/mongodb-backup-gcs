@@ -1,10 +1,21 @@
-FROM mongo
+FROM mongo:8
 
-RUN apt-get update && apt-get -y install cron awscli
+LABEL maintainer="wltmlx" \
+      description="MongoDB backup solution for Google Cloud Storage" \
+      version="1.0.0"
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      cron \
+      python3-pip && \
+    pip3 install --no-cache-dir gsutil && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV CRON_TIME="0 3 * * *" \
-  TZ=US/Eastern \
-  CRON_TZ=US/Eastern
+    TZ=UTC \
+    CRON_TZ=UTC
 
-ADD run.sh /run.sh
-CMD /run.sh
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+CMD ["/run.sh"]
