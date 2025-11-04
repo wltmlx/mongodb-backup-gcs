@@ -22,7 +22,7 @@ echo "=> Creating backup script"
 rm -f /backup.sh
 cat <<EOF >> /backup.sh
 #!/bin/bash
-export GOOGLE_APPLICATION_CREDENTIALS=${GCS_KEY_FILE_PATH}
+[[ -n "${GCS_KEY_FILE_PATH}" ]] && export GOOGLE_APPLICATION_CREDENTIALS=${GCS_KEY_FILE_PATH}
 TIMESTAMP=\`/bin/date +"%Y%m%dT%H%M%S"\`
 BACKUP_NAME=\${TIMESTAMP}.dump.gz
 GCSBACKUP=${GCSPATH}\${BACKUP_NAME}
@@ -42,8 +42,8 @@ echo "=> Creating restore script"
 rm -f /restore.sh
 cat <<EOF >> /restore.sh
 #!/bin/bash
-export GOOGLE_APPLICATION_CREDENTIALS=${GCS_KEY_FILE_PATH}
-if [[( -n "\${1}" )]];then
+[[ -n "${GCS_KEY_FILE_PATH}" ]] && export GOOGLE_APPLICATION_CREDENTIALS=${GCS_KEY_FILE_PATH}
+if [[ -n "\${1}" ]]; then
     RESTORE_ME=\${1}.dump.gz
 else
     RESTORE_ME=latest.dump.gz
@@ -64,7 +64,7 @@ echo "=> Creating list script"
 rm -f /listbackups.sh
 cat <<EOF >> /listbackups.sh
 #!/bin/bash
-export GOOGLE_APPLICATION_CREDENTIALS=${GCS_KEY_FILE_PATH}
+[[ -n "${GCS_KEY_FILE_PATH}" ]] && export GOOGLE_APPLICATION_CREDENTIALS=${GCS_KEY_FILE_PATH}
 gsutil ls ${GCSPATH}
 EOF
 chmod +x /listbackups.sh
