@@ -1,0 +1,35 @@
+1. Get the backup service status:
+  kubectl get pods -l app.kubernetes.io/name=mongodb-backup-gcs,app.kubernetes.io/instance={{ .Release.Name }}
+
+2. View the logs:
+  kubectl logs -l app.kubernetes.io/name=mongodb-backup-gcs,app.kubernetes.io/instance={{ .Release.Name }}
+
+3. List available backups in GCS:
+  kubectl exec -it deployment/{{ include "mongodb-backup-gcs.fullname" . }} -- /listbackups.sh
+
+4. Manually trigger a backup:
+  kubectl exec -it deployment/{{ include "mongodb-backup-gcs.fullname" . }} -- /backup.sh
+
+5. Restore from the latest backup:
+  kubectl exec -it deployment/{{ include "mongodb-backup-gcs.fullname" . }} -- /restore.sh
+
+6. Restore from a specific backup (use timestamp from listbackups):
+  kubectl exec -it deployment/{{ include "mongodb-backup-gcs.fullname" . }} -- /restore.sh 20231115T030000
+
+Configuration Summary:
+  MongoDB Host: {{ .Values.mongodb.host }}
+  MongoDB Port: {{ .Values.mongodb.port }}
+  GCS Bucket: {{ .Values.gcs.bucket }}
+  Backup Folder: {{ .Values.backupFolder }}
+  Cron Schedule: {{ .Values.cronTime }} ({{ .Values.timezone }})
+  {{- if .Values.initBackup }}
+  Initial Backup: Enabled
+  {{- end }}
+  {{- if .Values.initRestore }}
+  Initial Restore: Enabled
+  {{- end }}
+  {{- if .Values.disableCron }}
+  Cron Jobs: Disabled
+  {{- end }}
+
+For more information, visit: https://github.com/wltmlx/mongodb-backup-gcs

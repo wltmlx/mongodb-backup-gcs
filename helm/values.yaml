@@ -1,0 +1,93 @@
+replicaCount: 1
+
+# Docker registry configuration
+registry: "docker.io"
+
+image:
+  repository: wltmlx/mongodb-backup-gcs
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Image pull secrets for private registries (e.g., Artifactory)
+# Example:
+#   imagePullSecrets:
+#     - name: artifactory-credentials
+# Create the secret with:
+#   kubectl create secret docker-registry artifactory-credentials \
+#     --docker-server=artifactory.example.com \
+#     --docker-username=username \
+#     --docker-password=password \
+#     --docker-email=email@example.com
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 0
+
+securityContext: {}
+
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# MongoDB configuration
+mongodb:
+  host: "mongodb"
+  port: 27017
+  user: ""
+  password: ""
+  db: ""
+
+# GCS configuration
+gcs:
+  bucket: ""
+  keyFilePath: "/secrets/gcs-key.json"
+
+# Backup folder path in GCS bucket
+backupFolder: "mongodb-backups/"
+
+# Cron schedule for backups (default: 3 AM UTC daily)
+cronTime: "0 3 * * *"
+
+# Timezone
+timezone: "UTC"
+
+# Initial backup on startup
+initBackup: false
+
+# Initial restore on startup
+initRestore: false
+
+# Disable cron jobs (useful for one-time restore)
+disableCron: false
+
+# Extra options to pass to mongodump/mongorestore
+extraOpts: ""
+
+# GCS service account key (base64 encoded JSON)
+# You can generate this by running: cat /path/to/key.json | base64
+gcsKeyContent: ""
+
+# Or reference an existing secret
+existingSecret: ""
+existingSecretKey: "gcs-key.json"
+
+# Pod restart policy
+restartPolicy: Always
+
+# Log retention
+logs:
+  retention: "7d"

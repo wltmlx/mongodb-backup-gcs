@@ -1,0 +1,27 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# GCS credentials
+gcs-key.json
+*-key.json
+secrets/
+
+# Local backups
+*.dump.gz
+backup.sh
+restore.sh
+listbackups.sh
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
