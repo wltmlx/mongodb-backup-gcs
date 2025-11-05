@@ -18,6 +18,7 @@ spec:
       labels:
         {{- include "mongodb-backup-gcs.selectorLabels" . | nindent 8 }}
     spec:
+      automountServiceAccountToken: false
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -49,7 +50,7 @@ spec:
               name: {{ include "mongodb-backup-gcs.fullname" . }}
               key: mongodb-user
         {{- end }}
-        {{- if .Values.mongodb.password }}
+        {{- if or .Values.mongodb.password .Values.existingSecret }}
         - name: MONGODB_PASS
           valueFrom:
             secretKeyRef:
@@ -74,6 +75,8 @@ spec:
               name: {{ include "mongodb-backup-gcs.fullname" . }}
               key: gcs-bucket
         - name: GCS_KEY_FILE_PATH
+          value: {{ .Values.gcs.keyFilePath | quote }}
+        - name: GOOGLE_APPLICATION_CREDENTIALS
           value: {{ .Values.gcs.keyFilePath | quote }}
         - name: BACKUP_FOLDER
           valueFrom:

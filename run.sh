@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Activate GCS service account if key file is provided
+if [[ -n "${GCS_KEY_FILE_PATH}" && -f "${GCS_KEY_FILE_PATH}" ]]; then
+    echo "=> Activating GCS service account"
+    gcloud auth activate-service-account --key-file="${GCS_KEY_FILE_PATH}" --quiet
+    export GOOGLE_APPLICATION_CREDENTIALS="${GCS_KEY_FILE_PATH}"
+fi
+
 MONGODB_HOST=${MONGODB_PORT_27017_TCP_ADDR:-${MONGODB_HOST}}
 MONGODB_HOST=${MONGODB_PORT_1_27017_TCP_ADDR:-${MONGODB_HOST}}
 MONGODB_PORT=${MONGODB_PORT_27017_TCP_PORT:-${MONGODB_PORT}}
@@ -12,8 +19,9 @@ GCSPATH="gs://$GCS_BUCKET/$BACKUP_FOLDER"
 [[ ( -z "${MONGODB_USER}" ) && ( -n "${MONGODB_PASS}" ) ]] && MONGODB_USER='admin'
 
 [[ ( -n "${MONGODB_USER}" ) ]] && USER_STR=" --username ${MONGODB_USER}"
-[[ ( -n "${MONGODB_PASS}" ) ]] && PASS_STR=" --password '${MONGODB_PASS}'"
+[[ ( -n "${MONGODB_PASS}" ) ]] && PASS_STR=" --password=${MONGODB_PASS}"
 [[ ( -n "${MONGODB_DB}" ) ]] && DB_STR=" --db ${MONGODB_DB}"
+[[ ( -n "${MONGODB_USER}" ) ]] && AUTH_DB_STR=" --authenticationDatabase admin"
 
 # Export GCS credentials into env file for cron job
 printenv | sed 's/^\([a-zA-Z0-9_]*\)=\(.*\)$/export \1="\2"/g' | grep -E "^export GOOGLE_APPLICATION_CREDENTIALS" > /root/project_env.sh
@@ -28,7 +36,7 @@ BACKUP_NAME=\${TIMESTAMP}.dump.gz
 GCSBACKUP=${GCSPATH}\${BACKUP_NAME}
 GCSLATEST=${GCSPATH}latest.dump.gz
 echo "=> Backup started"
-if mongodump --host ${MONGODB_HOST} --port ${MONGODB_PORT} ${USER_STR}${PASS_STR}${DB_STR} --archive=\${BACKUP_NAME} --gzip ${EXTRA_OPTS} && gsutil cp \${BACKUP_NAME} \${GCSBACKUP} && gsutil cp \${GCSBACKUP} \${GCSLATEST} && rm \${BACKUP_NAME} ;then
+if mongodump --host ${MONGODB_HOST} --port ${MONGODB_PORT} ${USER_STR}${PASS_STR}${AUTH_DB_STR}${DB_STR} --archive=\${BACKUP_NAME} --gzip ${EXTRA_OPTS} && gsutil cp \${BACKUP_NAME} \${GCSBACKUP} && gsutil cp \${GCSBACKUP} \${GCSLATEST} && rm \${BACKUP_NAME} ;then
     echo "   > Backup succeeded"
 else
     echo "   > Backup failed"
@@ -50,7 +58,7 @@ else
 fi
 GCSRESTORE=${GCSPATH}\${RESTORE_ME}
 echo "=> Restore database from \${RESTORE_ME}"
-if gsutil cp \${GCSRESTORE} \${RESTORE_ME} && mongorestore --host ${MONGODB_HOST} --port ${MONGODB_PORT} ${USER_STR}${PASS_STR}${DB_STR} --drop ${EXTRA_OPTS} --archive=\${RESTORE_ME} --gzip && rm \${RESTORE_ME}; then
+if gsutil cp \${GCSRESTORE} \${RESTORE_ME} && mongorestore --host ${MONGODB_HOST} --port ${MONGODB_PORT} ${USER_STR}${PASS_STR}${AUTH_DB_STR}${DB_STR} --drop ${EXTRA_OPTS} --archive=\${RESTORE_ME} --gzip && rm \${RESTORE_ME}; then
     echo "   Restore succeeded"
 else
     echo "   Restore failed"
