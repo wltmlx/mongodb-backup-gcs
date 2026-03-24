@@ -1,11 +1,11 @@
 replicaCount: 1
 
 # Docker registry configuration
-registry: "docker.io"
+registry: "registry.artifactory.prod.lkw-walter.com"
 
 image:
   repository: wltmlx/mongodb-backup-gcs
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: "latest"
 
 # Image pull secrets for private registries (e.g., Artifactory)
@@ -18,7 +18,8 @@ image:
 #     --docker-username=username \
 #     --docker-password=password \
 #     --docker-email=email@example.com
-imagePullSecrets: []
+imagePullSecrets:
+  - name: registry
 
 nameOverride: ""
 fullnameOverride: ""
@@ -45,15 +46,15 @@ affinity: {}
 
 # MongoDB configuration
 mongodb:
-  host: "mongodb"
+  host: "librechat-librechat-mongodb.librechat.svc.cluster.local"
   port: 27017
-  user: ""
+  user: "backup"
   password: ""
-  db: ""
+  db: "LibreChat"
 
 # GCS configuration
 gcs:
-  bucket: ""
+  bucket: "walterchat-backups"
   keyFilePath: "/secrets/gcs-key.json"
 
 # Backup folder path in GCS bucket
@@ -82,7 +83,7 @@ extraOpts: ""
 gcsKeyContent: ""
 
 # Or reference an existing secret
-existingSecret: ""
+existingSecret: "mongodb-backup-secrets"
 existingSecretKey: "gcs-key.json"
 
 # Pod restart policy

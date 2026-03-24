@@ -23,8 +23,8 @@ GCSPATH="gs://$GCS_BUCKET/$BACKUP_FOLDER"
 [[ ( -n "${MONGODB_DB}" ) ]] && DB_STR=" --db ${MONGODB_DB}"
 [[ ( -n "${MONGODB_USER}" ) ]] && AUTH_DB_STR=" --authenticationDatabase admin"
 
-# Export GCS credentials into env file for cron job
-printenv | sed 's/^\([a-zA-Z0-9_]*\)=\(.*\)$/export \1="\2"/g' | grep -E "^export GOOGLE_APPLICATION_CREDENTIALS" > /root/project_env.sh
+# Export required env vars for cron job (cron has minimal environment)
+printenv | sed 's/^\([a-zA-Z0-9_]*\)=\(.*\)$/export \1="\2"/g' | grep -E "^export (GOOGLE_APPLICATION_CREDENTIALS|GCS_KEY_FILE_PATH|PATH|HOME|CLOUDSDK_CONFIG)" > /root/project_env.sh
 
 echo "=> Creating backup script"
 rm -f /backup.sh
@@ -36,7 +36,7 @@ BACKUP_NAME=\${TIMESTAMP}.dump.gz
 GCSBACKUP=${GCSPATH}\${BACKUP_NAME}
 GCSLATEST=${GCSPATH}latest.dump.gz
 echo "=> Backup started"
-if mongodump --host ${MONGODB_HOST} --port ${MONGODB_PORT} ${USER_STR}${PASS_STR}${AUTH_DB_STR}${DB_STR} --archive=\${BACKUP_NAME} --gzip ${EXTRA_OPTS} && gsutil cp \${BACKUP_NAME} \${GCSBACKUP} && gsutil cp \${GCSBACKUP} \${GCSLATEST} && rm \${BACKUP_NAME} ;then
+if mongodump --host ${MONGODB_HOST} --port ${MONGODB_PORT} ${USER_STR}${PASS_STR}${AUTH_DB_STR}${DB_STR} --archive=\${BACKUP_NAME} --gzip ${EXTRA_OPTS} && gsutil cp \${BACKUP_NAME} \${GCSBACKUP} && gsutil cp \${BACKUP_NAME} \${GCSLATEST} && rm \${BACKUP_NAME} ;then
     echo "   > Backup succeeded"
 else
     echo "   > Backup failed"

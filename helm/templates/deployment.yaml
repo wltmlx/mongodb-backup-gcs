@@ -129,7 +129,7 @@ spec:
           secretName: {{ include "mongodb-backup-gcs.fullname" . }}
           {{- end }}
           items:
-          - key: gcs-key.json
+          - key: {{ .Values.existingSecretKey | default "gcs-key.json" }}
             path: gcs-key.json
       {{- with .Values.nodeSelector }}
       nodeSelector:
