@@ -19,7 +19,7 @@ GCSPATH="gs://$GCS_BUCKET/$BACKUP_FOLDER"
 [[ ( -z "${MONGODB_USER}" ) && ( -n "${MONGODB_PASS}" ) ]] && MONGODB_USER='admin'
 
 [[ ( -n "${MONGODB_USER}" ) ]] && USER_STR=" --username ${MONGODB_USER}"
-[[ ( -n "${MONGODB_PASS}" ) ]] && PASS_STR=" --password=${MONGODB_PASS}"
+[[ ( -n "${MONGODB_PASS}" ) ]] && PASS_STR=" --password='${MONGODB_PASS}'"
 [[ ( -n "${MONGODB_DB}" ) ]] && DB_STR=" --db ${MONGODB_DB}"
 [[ ( -n "${MONGODB_USER}" ) ]] && AUTH_DB_STR=" --authenticationDatabase admin"
 

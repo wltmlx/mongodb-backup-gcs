@@ -48,7 +48,7 @@ affinity: {}
 mongodb:
   host: "librechat-librechat-mongodb.librechat.svc.cluster.local"
   port: 27017
-  user: "backup"
+  user: "admin"
   password: ""
   db: "LibreChat"
 
